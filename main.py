@@ -47,7 +47,7 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(b'Bad Request\n')
                     return
-            result = subprocess.run(f"ssh-keygen -I 'host key' -s ca/ca {'-h' if 'server' in query else ''} -n '{query['identity'][0]}' temp/{query['name'][0]}.pub", shell=True)
+            result = subprocess.run(f"ssh-keygen -I '{query['identity'][0]}' -s ca/ca {'-h' if 'server' in query else ''} -n '{query['identity'][0]}' temp/{query['name'][0]}.pub", shell=True)
 
             if result.returncode == 0:
                 self.send_response(200)
