@@ -1,0 +1,1 @@
+echo "@cert-authority * $(curl $1)" >> ~/.ssh/known_hosts
