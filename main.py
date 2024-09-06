@@ -16,6 +16,9 @@ os.makedirs(tmpdir, exist_ok=True)
 for file in os.listdir(tmpdir):
     os.remove(os.path.join(tmpdir, file))
 
+if not os.path.exists('ca/krl'):
+    result = subprocess.run('ssh-keygen -kf ca/krl', shell=True)
+
 def send_response(req: BaseHTTPRequestHandler, code: int, message: str):
     req.send_response(code)
     req.send_header('Content-type', 'text/plain')
@@ -125,6 +128,31 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 os.remove(crt_path)
                 return
 
+        elif self.path.startswith("/krl"):
+            with open('ca/krl', 'rb') as file:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/octet-stream')
+                self.end_headers()
+                self.wfile.write(file.read())
+                return
+        
+        elif self.path.startswith("/revoke"):
+            query = parse_qs(urlparse(self.path).query)
+            if not 'name' in query:
+                send_response(self, 400, 'Bad Request')
+                return
+            certificate_path = os.path.join(tmpdir, query["name"][0] + ".pub")
+            if not os.path.exists(certificate_path):
+                send_response(self, 404, 'Not Found')
+                return
+            result = subprocess.run(f"ssh-keygen -kuf ca/krl temp/{query['name'][0]}.pub", shell=True)
+
+            if result.returncode == 0:
+                send_response(self, 200, 'success')
+            else:
+                send_response(self, 500, 'command execution error')
+            return
+
         else:
             send_response(self, 404, 'Not Found')
             return
@@ -144,6 +172,7 @@ class MyHTTPRequestHandler(BaseHTTPRequestHandler):
                 send_response(self, 404, 'Not Found')
                 return
             test_write_file(self, ".ext", name)
+
 
 if __name__ == '__main__':
     httpd = HTTPServer(('127.0.0.1', 8000), MyHTTPRequestHandler)
